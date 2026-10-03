@@ -16,15 +16,19 @@ jobs:
           mkdir -p ~/bin
           curl https://storage.googleapis.com/git-repo-downloads/repo > ~/bin/repo
           chmod a+x ~/bin/repo
-      - name: 同步 TWRP 源码（OmniROM android-11）
+      - name: 同步 TWRP 源码（AOSP twrp-11 + 补 vendor/omni）
         run: |
-          # runner 无 SSH key，把 OmniROM manifest 里的 SSH 地址重写为 HTTPS
+          # runner 无 SSH key，把 manifest 里的 SSH 地址重写为 HTTPS
           git config --global url."https://github.com/".insteadOf "git@github.com:"
           git config --global url."https://github.com/".insteadOf "ssh://git@github.com/"
           mkdir -p twrp
           cd twrp
-          ~/bin/repo init -u https://github.com/omnirom/android.git -b android-11 --depth=1
+          # OmniROM android-11 分支部分项目已失效（frameworks/base 等被删），
+          # 而 TWRP recovery 不需要完整 ROM 组件，故用 AOSP 的 TWRP minimal manifest
+          ~/bin/repo init -u https://github.com/minimal-manifest-twrp/platform_manifest_twrp_aosp.git -b twrp-11 --depth=1
           ~/bin/repo sync -j$(nproc)
+          # omni_BOOX.mk 继承 vendor/omni/config/common.mk，手动拉 OmniROM 的 vendor/omni（android-11）
+          git clone -b android-11 --depth=1 https://github.com/omnirom/android_vendor_omni.git vendor/omni
       - name: 放入 device tree
         run: |
           mkdir -p twrp/device/onyx/BOOX
