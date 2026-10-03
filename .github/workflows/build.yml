@@ -18,6 +18,9 @@ jobs:
           chmod a+x ~/bin/repo
       - name: 同步 TWRP 源码（OmniROM android-11）
         run: |
+          # runner 无 SSH key，把 OmniROM manifest 里的 SSH 地址重写为 HTTPS
+          git config --global url."https://github.com/".insteadOf "git@github.com:"
+          git config --global url."https://github.com/".insteadOf "ssh://git@github.com/"
           mkdir -p twrp
           cd twrp
           ~/bin/repo init -u https://github.com/omnirom/android.git -b android-11 --depth=1
