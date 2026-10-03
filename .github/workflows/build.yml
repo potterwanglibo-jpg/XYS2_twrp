@@ -29,6 +29,9 @@ jobs:
           ~/bin/repo sync -j$(nproc)
           # omni_BOOX.mk 继承 vendor/omni/config/common.mk，手动拉 OmniROM 的 vendor/omni（android-11）
           git clone -b android-11 --depth=1 https://github.com/omnirom/android_vendor_omni.git vendor/omni
+          # OmniROM 的 soong generator(omnirom/soong/generator) 与 TWRP 的(twrp/soong/generator) 同名包 android/soong/generator 冲突，
+          # recovery 不需要 OmniROM 的 soong 插件，删除 vendor/omni/build 禁用之
+          rm -rf vendor/omni/build
       - name: 放入 device tree
         run: |
           mkdir -p twrp/device/onyx/BOOX
