@@ -16,11 +16,11 @@ jobs:
           mkdir -p ~/bin
           curl https://storage.googleapis.com/git-repo-downloads/repo > ~/bin/repo
           chmod a+x ~/bin/repo
-      - name: 同步 TWRP 源码（twrp-11 = Android 11）
+      - name: 同步 TWRP 源码（OmniROM android-11）
         run: |
           mkdir -p twrp
           cd twrp
-          ~/bin/repo init -u https://github.com/minimal-manifest-twrp/platform_manifest_twrp_aosp.git -b twrp-11 --depth=1
+          ~/bin/repo init -u https://github.com/omnirom/android.git -b android-11 --depth=1
           ~/bin/repo sync -j$(nproc)
       - name: 放入 device tree
         run: |
