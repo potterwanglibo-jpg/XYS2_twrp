@@ -6,11 +6,17 @@
 #
 
 
+
+
 DEVICE_PATH := device/onyx/BOOX
+
+
 
 
 # For building with minimal manifest
 ALLOW_MISSING_DEPENDENCIES := true
+
+
 
 
 # A/B
@@ -23,6 +29,8 @@ AB_OTA_PARTITIONS += \
 # BOARD_USES_RECOVERY_AS_BOOT := true   # 已删除：小猿 S2 有独立 recovery 分区，需单独生成 recovery.img
 
 
+
+
 # Architecture
 TARGET_ARCH := arm64
 TARGET_ARCH_VARIANT := armv8-a
@@ -32,10 +40,12 @@ TARGET_CPU_VARIANT := generic
 TARGET_CPU_VARIANT_RUNTIME := generic
 
 
+
+
 TARGET_2ND_ARCH := arm
 TARGET_2ND_ARCH_VARIANT := armv7-a-neon
-TARGET_2ND_CPU_ABI := armeabi-v7a
-TARGET_2ND_CPU_ABI2 := armeabi
-TARGET_2ND_CPU_VARIANT := generic
-TARGET_2ND_CPU_VARIANT_RUNTIME := generic
 
+# TWRP theme: 小猿 S2 墨水屏 1404x1872 竖屏
+TARGET_SCREEN_WIDTH := 1404
+TARGET_SCREEN_HEIGHT := 1872
+TW_THEME := portrait_hdpi
