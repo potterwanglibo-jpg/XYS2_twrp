@@ -2,45 +2,38 @@ name: Build OrangeFox for XiaoYuan S2 (trinket)
 on: workflow_dispatch
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
       - name: 安装依赖
         run: |
           sudo apt-get update
-          sudo apt-get install -y bc bison build-essential ccache curl flex g++-multilib gcc-multilib git gnupg gperf imagemagick liblz4-tool libncurses5-dev libsdl1.2-dev libssl-dev libxml2 libxml2-utils lzop pngcrush rsync schedtool squashfs-tools xsltproc zip zlib1g-dev python3 patch
+          sudo apt-get install -y bc bison build-essential ccache curl flex g++-multilib gcc-multilib git gnupg gperf imagemagick liblz4-tool libncurses5-dev libsdl1.2-dev libssl-dev libxml2 libxml2-utils lzop pngcrush rsync schedtool squashfs-tools xsltproc zip zlib1g-dev python3 python-is-python2 aria2 patch
           mkdir -p ~/bin
           curl https://storage.googleapis.com/git-repo-downloads/repo > ~/bin/repo
           chmod a+x ~/bin/repo
-      - name: 同步源码（AOSP twrp minimal android-11 + OrangeFox fox_11.0 组件）
+      - name: 同步源码（OrangeFox fox_11.0 官方 sync 链）
         run: |
-          # runner 无 SSH key，把 manifest 里的 SSH 地址重写为 HTTPS
+          # runner 无 SSH key，把 SSH 地址重写为 HTTPS
           git config --global url."https://gitlab.com/".insteadOf "git@gitlab.com:"
           git config --global url."https://gitlab.com/".insteadOf "ssh://git@gitlab.com:"
           git config --global url."https://github.com/".insteadOf "git@github.com:"
-          mkdir -p fox
-          cd fox
-          # 基底用 AOSP TWRP minimal manifest（twrp-11），OrangeFox/Manifest 的 fox_11.0 分支已删
-          ~/bin/repo init -u https://github.com/minimal-manifest-twrp/platform_manifest_twrp_aosp -b twrp-11 --depth=1
-          # 注入 OrangeFox local manifest（bootable/recovery + vendor/recovery + vendor/twrp）
-          mkdir -p .repo/local_manifests
-          cp ../local_manifest_orangefox.xml .repo/local_manifests/orangefox.xml
-          ~/bin/repo sync -j$(nproc)
-      - name: 应用 OrangeFox fox_11.0 补丁到 build 系统
-        run: |
-          cd fox
-          # 补丁路径为 core/...、make/envsetup.sh，应用在 build/ 目录（build/core 是到 build/make/core 的链接）
-          cd build
-          patch -p1 < ../patch-manifest-fox_11.0.diff && echo "PATCH_OK" || echo "PATCH_FAIL"
-          grep -l "FOX_VENDOR" core/config.mk && echo "CONFIG_OK" || echo "CONFIG_FAIL"
-          cd ..
+          export GIT_TERMINAL_PROMPT=0
+          # 社区验证过的 OrangeFox 官方 sync 脚本（GitHub 镜像，避免 GitLab 慢）
+          git clone https://github.com/momo54181/sync.git
+          cd sync
+          chmod 777 orangefox_sync.sh
+          # 脚本自动完成：repo init twrp-11 minimal + repo sync + patch build(make) + clone qcom common/twrp-common +
+          # mv bootable/recovery(移走TWRP) + clone OrangeFox bootable/Recovery(fox_11.0) + clone vendor/recovery
+          # 这样完全绕开 repo 不支持 local manifest 同 path 覆盖 / remove-project 报错的问题
+          ./orangefox_sync.sh --branch 11.0 --path $GITHUB_WORKSPACE/fox_11.0
       - name: 放入 device tree
         run: |
-          mkdir -p fox/device/onyx/BOOX
-          cp -r Android.bp Android.mk AndroidProducts.mk BoardConfig.mk README.md device.mk extract-files.sh omni_BOOX.mk twrp_BOOX.mk vendorsetup.sh recovery.fstab setup-makefiles.sh prebuilt fox/device/onyx/BOOX/
+          mkdir -p $GITHUB_WORKSPACE/fox_11.0/device/onyx/BOOX
+          cp -r Android.bp Android.mk AndroidProducts.mk BoardConfig.mk README.md device.mk extract-files.sh omni_BOOX.mk twrp_BOOX.mk vendorsetup.sh recovery.fstab setup-makefiles.sh prebuilt $GITHUB_WORKSPACE/fox_11.0/device/onyx/BOOX/
       - name: 编译 OrangeFox
         run: |
-          cd fox
+          cd $GITHUB_WORKSPACE/fox_11.0
           export ALLOW_MISSING_DEPENDENCIES=true
           export FOX_BUILD_DEVICE=BOOX
           export FOX_AB_DEVICE=1
@@ -54,7 +47,7 @@ jobs:
           mka recoveryimage -j$(nproc)
       - name: 注入 recovery_dtbo（原版 recovery 的 qcom 设备树表，含 trinket 平台）
         run: |
-          cd fox
+          cd $GITHUB_WORKSPACE/fox_11.0
           ls -la out/target/product/BOOX/ | grep -iE "orange|recovery" || true
           for img in out/target/product/BOOX/OrangeFox-*.img out/target/product/BOOX/recovery.img; do
             if [ -f "$img" ]; then
@@ -67,5 +60,5 @@ jobs:
         with:
           name: orangefox-s2
           path: |
-            fox/out/target/product/BOOX/OrangeFox-*.img
-            fox/out/target/product/BOOX/recovery.img
+            fox_11.0/out/target/product/BOOX/OrangeFox-*.img
+            fox_11.0/out/target/product/BOOX/recovery.img
