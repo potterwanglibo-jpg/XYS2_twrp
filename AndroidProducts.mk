@@ -6,13 +6,9 @@
 #
 
 PRODUCT_MAKEFILES := \
-    $(LOCAL_DIR)/omni_BOOX.mk \
-    $(LOCAL_DIR)/twrp_BOOX.mk
+    $(LOCAL_DIR)/omni_BOOX.mk
 
 COMMON_LUNCH_CHOICES := \
     omni_BOOX-user \
     omni_BOOX-userdebug \
-    omni_BOOX-eng \
-    twrp_BOOX-user \
-    twrp_BOOX-userdebug \
-    twrp_BOOX-eng
+    omni_BOOX-eng
