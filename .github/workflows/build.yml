@@ -49,4 +49,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: twrp-s2
-          path: twrp/out/target/product/BOOX/recovery.img
+          # recovery-as-boot：产物为 boot.img（TWRP 作为 boot，9008 刷 boot_a/b 开机进 TWRP）
+          path: twrp/out/target/product/BOOX/boot.img
