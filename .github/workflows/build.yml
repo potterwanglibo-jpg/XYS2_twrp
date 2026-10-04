@@ -45,16 +45,6 @@ jobs:
           . build/envsetup.sh
           lunch twrp_BOOX-eng
           mka recoveryimage -j$(nproc)
-      - name: 注入 recovery_dtbo（原版 recovery 的 qcom 设备树表，含 trinket 平台）
-        run: |
-          cd $GITHUB_WORKSPACE/fox_11.0
-          ls -la out/target/product/BOOX/ | grep -iE "orange|recovery" || true
-          for img in out/target/product/BOOX/OrangeFox-*.img out/target/product/BOOX/recovery.img; do
-            if [ -f "$img" ]; then
-              echo "injecting recovery_dtbo -> $img"
-              python3 ../inject_recovery_dtbo.py "$img" device/onyx/BOOX/prebuilt/recovery_dtbo.img || echo "inject failed for $img"
-            fi
-          done
       - name: 上传产物
         uses: actions/upload-artifact@v4
         with:
