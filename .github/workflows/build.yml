@@ -31,6 +31,14 @@ jobs:
           # mv bootable/recovery(移走TWRP) + clone OrangeFox bootable/Recovery(fox_11.0) + clone vendor/recovery
           # 这样完全绕开 repo 不支持 local manifest 同 path 覆盖 / remove-project 报错的问题
           ./orangefox_sync.sh --branch 11.0 --path $GITHUB_WORKSPACE/fox_11.0
+      - name: clone TWRP vendor tree (vendor/twrp)
+        run: |
+          # OrangeFox 设备树继承 vendor/twrp/config/common.mk，patch 的 envsetup 也引用 vendor/twrp/build/envsetup.sh。
+          # 但 minimal manifest(twrp_aosp twrp-11) 与 sync 脚本都不提供 vendor/twrp
+          # （sync 只把 OrangeFox vendor/recovery clone 到 vendor/recovery，该仓库无 build/ 与 config/）。
+          # 缺 vendor/twrp 会让 . build/envsetup.sh 末尾 source vendor/twrp/build/envsetup.sh 时 exit 1（run#21 根因）。
+          git clone --depth 1 -b android-11 https://github.com/TeamWin/android_vendor_twrp.git $GITHUB_WORKSPACE/fox_11.0/vendor/twrp
+          test -f $GITHUB_WORKSPACE/fox_11.0/vendor/twrp/build/envsetup.sh && echo VENDOR_TWRP_OK || { echo VENDOR_TWRP_MISSING; exit 1; }
       - name: 放入 device tree
         run: |
           mkdir -p $GITHUB_WORKSPACE/fox_11.0/device/onyx/BOOX
