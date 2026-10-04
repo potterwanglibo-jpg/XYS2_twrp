@@ -72,7 +72,7 @@ TARGET_COPY_OUT_VENDOR := vendor
 # prebuilt/kernel 为原版多平台内核（含 trinket 与 msm8953 支持）。
 TARGET_BOARD_PLATFORM := trinket
 # Recovery
-TARGET_RECOVERY_PIXEL_FORMAT := rgba_8888
+TARGET_RECOVERY_PIXEL_FORMAT := RGBX_8888
 TARGET_USERIMAGES_USE_EXT4 := true
 TARGET_USERIMAGES_USE_F2FS := true
 # Security patch level
@@ -94,4 +94,4 @@ TW_INCLUDE_REPACKTOOLS := true
 # cmdline: video=vfb:640x400,bpp=32,memsize=3072000
 # TWRP minui 默认打开 /dev/graphics/fb0 绘制。
 # 分辨率 1404x1872（10.3" 227ppi），RGBX/RGBA 8888 帧缓冲。
-TARGET_RECOVERY_PIXEL_FORMAT := rgba_8888
+TARGET_RECOVERY_PIXEL_FORMAT := RGBX_8888
