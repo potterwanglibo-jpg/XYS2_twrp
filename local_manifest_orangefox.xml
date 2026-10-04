@@ -10,7 +10,8 @@
 <manifest>
   <remote name="fox" fetch="https://gitlab.com/OrangeFox/" />
   <remote name="twrp" fetch="https://github.com/TeamWin/" />
-  <remove-project name="platform/bootable/recovery" />
+  <!-- 不 remove-project（repo 对 twrp-11 minimal manifest 报该 name 不存在），
+       直接同 path project 覆盖：repo 中 local manifest 与主 manifest 同 path 时以 local 为准 -->
   <project path="bootable/recovery" name="bootable/Recovery" remote="fox" revision="fox_11.0" />
   <project path="vendor/recovery" name="vendor/recovery" remote="fox" revision="fox_11.0" />
   <project path="vendor/twrp" name="android_vendor_twrp" remote="twrp" revision="android-11" />
