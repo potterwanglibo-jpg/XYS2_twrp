@@ -48,6 +48,22 @@ jobs:
         run: |
           mkdir -p $GITHUB_WORKSPACE/fox_11.0/device/onyx/BOOX
           cp -r Android.bp Android.mk AndroidProducts.mk BoardConfig.mk README.md device.mk extract-files.sh omni_BOOX.mk twrp_BOOX.mk vendorsetup.sh recovery.fstab setup-makefiles.sh prebuilt $GITHUB_WORKSPACE/fox_11.0/device/onyx/BOOX/
+      - name: 调试检查（定位 envsetup.sh 崩溃点）
+        run: |
+          cd $GITHUB_WORKSPACE/fox_11.0
+          echo "=== PWD ==="; pwd
+          echo "=== build/make/core/envsetup.mk ==="; ls -la build/make/core/envsetup.mk 2>&1 || echo "MISSING"
+          echo "=== vendor/twrp/build/envsetup.sh ==="; ls -la vendor/twrp/build/envsetup.sh 2>&1 || echo "MISSING"
+          echo "=== bootable/recovery/orangefox_defaults.go ==="; ls -la bootable/recovery/orangefox_defaults.go 2>&1 || echo "MISSING"
+          echo "=== bootable/recovery/orangefox.mk ==="; ls -la bootable/recovery/orangefox.mk 2>&1 || echo "MISSING"
+          echo "=== device/onyx/BOOX/ ==="; ls device/onyx/BOOX/ 2>&1
+          echo "=== 试 source envsetup（set +e 防退出）==="
+          set +e
+          bash -x build/envsetup.sh > /tmp/envsetup_trace.log 2>&1
+          echo "ENVSETUP_EXIT=$?"
+          echo "=== 最后 40 行跟踪 ==="
+          tail -40 /tmp/envsetup_trace.log
+          set -e
       - name: 编译 OrangeFox
         run: |
           cd $GITHUB_WORKSPACE/fox_11.0
@@ -59,8 +75,12 @@ jobs:
           export OF_DEFAULT_KEYMASTER_VERSION=4.1
           # 本次只出 recovery.img，跳过 update zip 缩短时间
           export OF_DISABLE_UPDATEZIP=1
+          set +e
           . build/envsetup.sh
+          echo "ENVSETUP_EXIT=$?"
           lunch twrp_BOOX-eng
+          echo "LUNCH_EXIT=$?"
+          set -e
           mka recoveryimage -j$(nproc)
       - name: 上传产物
         uses: actions/upload-artifact@v4
