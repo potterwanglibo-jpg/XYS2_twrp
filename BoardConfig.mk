@@ -95,3 +95,7 @@ TW_INCLUDE_REPACKTOOLS := true
 # TWRP minui 默认打开 /dev/graphics/fb0 绘制。
 # 分辨率 1404x1872（10.3" 227ppi），RGBX/RGBA 8888 帧缓冲。
 TARGET_RECOVERY_PIXEL_FORMAT := RGBX_8888
+# OrangeFox/TWRP 主题布局：必须同时设置 TARGET_SCREEN_WIDTH/HEIGHT 与 TW_THEME，
+# 否则 soong 找不到对应的 ui.xml（theme selection failed）
+TARGET_SCREEN_WIDTH := 1404
+TARGET_SCREEN_HEIGHT := 1872
