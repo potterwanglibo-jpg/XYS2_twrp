@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  OrangeFox fox_11.0 组件注入（叠加在 AOSP twrp minimal manifest twrp-11 之上）
+  - bootable/recovery   -> OrangeFox bootable/Recovery  (fox_11.0 官方分支，非活跃但存在)
+  - vendor/recovery     -> OrangeFox vendor/recovery    (fox_11.0，含 OrangeFox_A11.sh)
+  - vendor/twrp         -> TeamWin android_vendor_twrp   (android-11，OrangeFox product 继承 vendor/twrp/config/common.mk)
+  OrangeFox 官方 sync 仓库已删除 Manifest 主仓库的 fox_11.0 分支，因此不能用
+  OrangeFox/Manifest.git -b fox_11.0 作 repo 基底，只能用 AOSP twrp minimal + 本项目文件。
+-->
+<manifest>
+  <remote name="fox" fetch="https://gitlab.com/OrangeFox/" />
+  <remote name="twrp" fetch="https://github.com/TeamWin/" />
+  <remove-project name="platform/bootable/recovery" />
+  <project path="bootable/recovery" name="bootable/Recovery" remote="fox" revision="fox_11.0" />
+  <project path="vendor/recovery" name="vendor/recovery" remote="fox" revision="fox_11.0" />
+  <project path="vendor/twrp" name="android_vendor_twrp" remote="twrp" revision="android-11" />
+</manifest>

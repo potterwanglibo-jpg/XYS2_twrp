@@ -1,10 +1,10 @@
 # OrangeFox for BOOX (XiaoYuan S2, trinket/SM6125 = 骁龙665, Android 11)
-# 继承与 omni_BOOX.mk 相同的基础, OrangeFox 用 twrp_<device> 前缀 lunch
+# 参考 OrangeFox 官方 vayu fox_11.0：OrangeFox product 继承 vendor/twrp/config/common.mk
 $(call inherit-product, $(SRC_TARGET_DIR)/product/core_64_bit.mk)
 $(call inherit-product, $(SRC_TARGET_DIR)/product/full_base_telephony.mk)
 
-# Inherit some common Omni stuff (OrangeFox 基于 OmniROM)
-$(call inherit-product, vendor/omni/config/common.mk)
+# OrangeFox 用 vendor/twrp（TWRP vendor 树），不再用 vendor/omni
+$(call inherit-product, vendor/twrp/config/common.mk)
 
 # Inherit from BOOX device
 $(call inherit-product, device/onyx/BOOX/device.mk)
