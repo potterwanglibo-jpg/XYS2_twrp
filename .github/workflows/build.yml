@@ -8,27 +8,36 @@ jobs:
       - name: 安装依赖
         run: |
           sudo apt-get update
-          sudo apt-get install -y bc bison build-essential ccache curl flex g++-multilib gcc-multilib git gnupg gperf imagemagick liblz4-tool libncurses5-dev libsdl1.2-dev libssl-dev libxml2 libxml2-utils lzop pngcrush rsync schedtool squashfs-tools xsltproc zip zlib1g-dev python3 openjdk-8-jdk
+          sudo apt-get install -y bc bison build-essential ccache curl flex g++-multilib gcc-multilib git gnupg gperf imagemagick liblz4-tool libncurses5-dev libsdl1.2-dev libssl-dev libxml2 libxml2-utils lzop pngcrush rsync schedtool squashfs-tools xsltproc zip zlib1g-dev python3 patch
           mkdir -p ~/bin
           curl https://storage.googleapis.com/git-repo-downloads/repo > ~/bin/repo
           chmod a+x ~/bin/repo
-      - name: 同步 OrangeFox 源码（fox_11.0，Android 11）
+      - name: 同步源码（AOSP twrp minimal android-11 + OrangeFox fox_11.0 组件）
         run: |
           # runner 无 SSH key，把 manifest 里的 SSH 地址重写为 HTTPS
           git config --global url."https://gitlab.com/".insteadOf "git@gitlab.com:"
           git config --global url."https://gitlab.com/".insteadOf "ssh://git@gitlab.com:"
+          git config --global url."https://github.com/".insteadOf "git@github.com:"
           mkdir -p fox
           cd fox
-          ~/bin/repo init -u https://gitlab.com/OrangeFox/Manifest.git -b fox_11.0 --depth=1
+          # 基底用 AOSP TWRP minimal manifest（twrp-11），OrangeFox/Manifest 的 fox_11.0 分支已删
+          ~/bin/repo init -u https://github.com/minimal-manifest-twrp/platform_manifest_twrp_aosp -b twrp-11 --depth=1
+          # 注入 OrangeFox local manifest（bootable/recovery + vendor/recovery + vendor/twrp）
+          mkdir -p .repo/local_manifests
+          cp ../local_manifest_orangefox.xml .repo/local_manifests/orangefox.xml
           ~/bin/repo sync -j$(nproc)
+      - name: 应用 OrangeFox fox_11.0 补丁到 build 系统
+        run: |
+          cd fox
+          # 补丁路径为 core/...、make/envsetup.sh，应用在 build/ 目录（build/core 是到 build/make/core 的链接）
+          cd build
+          patch -p1 < ../patch-manifest-fox_11.0.diff && echo "PATCH_OK" || echo "PATCH_FAIL"
+          grep -l "FOX_VENDOR" core/config.mk && echo "CONFIG_OK" || echo "CONFIG_FAIL"
+          cd ..
       - name: 放入 device tree
         run: |
           mkdir -p fox/device/onyx/BOOX
           cp -r Android.bp Android.mk AndroidProducts.mk BoardConfig.mk README.md device.mk extract-files.sh omni_BOOX.mk twrp_BOOX.mk vendorsetup.sh recovery.fstab setup-makefiles.sh prebuilt fox/device/onyx/BOOX/
-      - name: 应用屏幕方向补丁（左旋90°+镜像）
-        run: |
-          cd fox
-          python3 ../apply_rotate.py bootable/recovery/minuitwrp/graphics_fbdev.cpp || echo "rotate patch skipped (OrangeFox minuitwrp path may differ)"
       - name: 编译 OrangeFox
         run: |
           cd fox
@@ -38,15 +47,25 @@ jobs:
           export OF_FORCE_PREBUILT_KERNEL=1
           export FOX_VANILLA_BUILD=1
           export OF_DEFAULT_KEYMASTER_VERSION=4.1
+          # 本次只出 recovery.img，跳过 update zip 缩短时间
+          export OF_DISABLE_UPDATEZIP=1
           . build/envsetup.sh
           lunch twrp_BOOX-eng
           mka recoveryimage -j$(nproc)
       - name: 注入 recovery_dtbo（原版 recovery 的 qcom 设备树表，含 trinket 平台）
         run: |
           cd fox
-          python3 ../inject_recovery_dtbo.py out/target/product/BOOX/OrangeFox-unofficial-BOOX.img device/onyx/BOOX/prebuilt/recovery_dtbo.img
+          ls -la out/target/product/BOOX/ | grep -iE "orange|recovery" || true
+          for img in out/target/product/BOOX/OrangeFox-*.img out/target/product/BOOX/recovery.img; do
+            if [ -f "$img" ]; then
+              echo "injecting recovery_dtbo -> $img"
+              python3 ../inject_recovery_dtbo.py "$img" device/onyx/BOOX/prebuilt/recovery_dtbo.img || echo "inject failed for $img"
+            fi
+          done
       - name: 上传产物
         uses: actions/upload-artifact@v4
         with:
           name: orangefox-s2
-          path: fox/out/target/product/BOOX/OrangeFox-unofficial-BOOX.img
+          path: |
+            fox/out/target/product/BOOX/OrangeFox-*.img
+            fox/out/target/product/BOOX/recovery.img
