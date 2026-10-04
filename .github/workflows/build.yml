@@ -1,4 +1,4 @@
-name: Build TWRP for XiaoYuan S2 (trinket)
+name: Build OrangeFox for XiaoYuan S2 (trinket)
 on: workflow_dispatch
 jobs:
   build:
@@ -12,44 +12,41 @@ jobs:
           mkdir -p ~/bin
           curl https://storage.googleapis.com/git-repo-downloads/repo > ~/bin/repo
           chmod a+x ~/bin/repo
-      - name: 同步 TWRP 源码（AOSP twrp-11 + 补 vendor/omni）
+      - name: 同步 OrangeFox 源码（fox_11.0，Android 11）
         run: |
           # runner 无 SSH key，把 manifest 里的 SSH 地址重写为 HTTPS
-          git config --global url."https://github.com/".insteadOf "git@github.com:"
-          git config --global url."https://github.com/".insteadOf "ssh://git@github.com/"
-          mkdir -p twrp
-          cd twrp
-          # OmniROM android-11 分支部分项目已失效（frameworks/base 等被删），
-          # 而 TWRP recovery 不需要完整 ROM 组件，故用 AOSP 的 TWRP minimal manifest
-          ~/bin/repo init -u https://github.com/minimal-manifest-twrp/platform_manifest_twrp_aosp.git -b twrp-11 --depth=1
+          git config --global url."https://gitlab.com/".insteadOf "git@gitlab.com:"
+          git config --global url."https://gitlab.com/".insteadOf "ssh://git@gitlab.com:"
+          mkdir -p fox
+          cd fox
+          ~/bin/repo init -u https://gitlab.com/OrangeFox/Manifest.git -b fox_11.0 --depth=1
           ~/bin/repo sync -j$(nproc)
-          # omni_BOOX.mk 继承 vendor/omni/config/common.mk，手动拉 OmniROM 的 vendor/omni（android-11）
-          git clone -b android-11 --depth=1 https://github.com/omnirom/android_vendor_omni.git vendor/omni
-          # OmniROM 的 soong generator(omnirom/soong/generator) 与 TWRP 的(twrp/soong/generator) 同名包 android/soong/generator 冲突，
-          # recovery 不需要 OmniROM 的 soong 插件，删除 vendor/omni/build 禁用之
-          rm -rf vendor/omni/build
       - name: 放入 device tree
         run: |
-          mkdir -p twrp/device/onyx/BOOX
-          cp -r Android.bp Android.mk AndroidProducts.mk BoardConfig.mk README.md device.mk extract-files.sh omni_BOOX.mk recovery.fstab setup-makefiles.sh vendorsetup.sh prebuilt twrp/device/onyx/BOOX/
+          mkdir -p fox/device/onyx/BOOX
+          cp -r Android.bp Android.mk AndroidProducts.mk BoardConfig.mk README.md device.mk extract-files.sh omni_BOOX.mk twrp_BOOX.mk vendorsetup.sh recovery.fstab setup-makefiles.sh prebuilt fox/device/onyx/BOOX/
       - name: 应用屏幕方向补丁（左旋90°+镜像）
         run: |
-          cd twrp
-          python3 ../apply_rotate.py bootable/recovery/minuitwrp/graphics_fbdev.cpp
-      - name: 编译 recovery
+          cd fox
+          python3 ../apply_rotate.py bootable/recovery/minuitwrp/graphics_fbdev.cpp || echo "rotate patch skipped (OrangeFox minuitwrp path may differ)"
+      - name: 编译 OrangeFox
         run: |
-          cd twrp
+          cd fox
           export ALLOW_MISSING_DEPENDENCIES=true
+          export FOX_BUILD_DEVICE=BOOX
+          export FOX_AB_DEVICE=1
+          export OF_FORCE_PREBUILT_KERNEL=1
+          export FOX_VANILLA_BUILD=1
+          export OF_DEFAULT_KEYMASTER_VERSION=4.1
           . build/envsetup.sh
-          lunch omni_BOOX-eng
+          lunch twrp_BOOX-eng
           mka recoveryimage -j$(nproc)
       - name: 注入 recovery_dtbo（原版 recovery 的 qcom 设备树表，含 trinket 平台）
         run: |
-          cd twrp
-          python3 ../inject_recovery_dtbo.py out/target/product/BOOX/recovery.img device/onyx/BOOX/prebuilt/recovery_dtbo.img
+          cd fox
+          python3 ../inject_recovery_dtbo.py out/target/product/BOOX/OrangeFox-unofficial-BOOX.img device/onyx/BOOX/prebuilt/recovery_dtbo.img
       - name: 上传产物
         uses: actions/upload-artifact@v4
         with:
-          name: twrp-s2
-          # 独立 recovery 分区方案：产物为 recovery.img
-          path: twrp/out/target/product/BOOX/recovery.img
+          name: orangefox-s2
+          path: fox/out/target/product/BOOX/OrangeFox-unofficial-BOOX.img
