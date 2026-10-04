@@ -1,13 +1,11 @@
 name: Build TWRP for XiaoYuan S2 (msm8953)
 on: workflow_dispatch
 
-
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
 
       - name: 安装依赖
         run: |
@@ -36,6 +34,10 @@ jobs:
         run: |
           mkdir -p twrp/device/onyx/BOOX
           cp -r Android.bp Android.mk AndroidProducts.mk BoardConfig.mk README.md device.mk extract-files.sh omni_BOOX.mk recovery.fstab setup-makefiles.sh vendorsetup.sh prebuilt twrp/device/onyx/BOOX/
+      - name: 应用屏幕方向补丁（左旋90°+镜像）
+        run: |
+          cd twrp
+          python3 ../apply_rotate.py bootable/recovery/minuitwrp/graphics_fbdev.cpp
       - name: 编译 recovery
         run: |
           cd twrp
