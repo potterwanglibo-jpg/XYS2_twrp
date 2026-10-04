@@ -19,6 +19,10 @@ jobs:
           git config --global url."https://gitlab.com/".insteadOf "ssh://git@gitlab.com:"
           git config --global url."https://github.com/".insteadOf "git@github.com:"
           export GIT_TERMINAL_PROMPT=0
+          # repo 装在 ~/bin，必须加入 PATH，否则 orangefox_sync.sh 调用 repo 立即失败（command not found）
+          export PATH="$PATH:$HOME/bin"
+          echo "PATH=$PATH"
+          which repo && repo --version || echo "REPO_MISSING_IN_PATH"
           # 社区验证过的 OrangeFox 官方 sync 脚本（GitHub 镜像，避免 GitLab 慢）
           git clone https://github.com/momo54181/sync.git
           cd sync
