@@ -14,10 +14,7 @@ AB_OTA_PARTITIONS += \
     system_ext \
     system \
     product
-# recovery-as-boot：小猿 S2 的 BL 不引导独立 recovery 分区（被阉割成产测），
-# 但会正常引导 boot 分区。故把 TWRP 编成 boot（BOARD_USES_RECOVERY_AS_BOOT := true），
-# 9008 刷入 boot_a/b，开机直接进 TWRP。
-BOARD_USES_RECOVERY_AS_BOOT := true
+# BOARD_USES_RECOVERY_AS_BOOT := true  # 已删除：小猿 S2 有独立 recovery 分区，需单独生成 recovery.img
 # Architecture
 TARGET_ARCH := arm64
 TARGET_ARCH_VARIANT := armv8-a
@@ -52,7 +49,7 @@ BOARD_KERNEL_IMAGE_NAME := Image
 BOARD_INCLUDE_DTB_IN_BOOTIMG := true
 TARGET_KERNEL_CONFIG := BOOX_defconfig
 TARGET_KERNEL_SOURCE := kernel/onyx/BOOX
-# Kernel - prebuilt
+# Kernel - prebuilt（原版多平台内核，支持 trinket(SM6125/骁龙665) 与 msm8953）
 TARGET_FORCE_PREBUILT_KERNEL := true
 ifeq ($(TARGET_FORCE_PREBUILT_KERNEL),true)
 TARGET_PREBUILT_KERNEL := $(DEVICE_PATH)/prebuilt/kernel
@@ -62,7 +59,7 @@ BOARD_INCLUDE_DTB_IN_BOOTIMG :=
 endif
 # Partitions
 BOARD_FLASH_BLOCK_SIZE := 262144 # (BOARD_KERNEL_PAGESIZE * 64)
-# 实测 boot_a 分区为 0x4000000 = 67108864（64MB）；recovery-as-boot 时 TWRP 作为 boot 镜像
+# 实测 boot_a 分区为 0x4000000 = 67108864（64MB）
 BOARD_BOOTIMAGE_PARTITION_SIZE := 67108864
 # 小猿 S2 存在独立 recovery 分区（recovery_a.img 实测 100663296 字节）
 BOARD_RECOVERYIMAGE_PARTITION_SIZE := 100663296
@@ -71,8 +68,9 @@ BOARD_SYSTEMIMAGE_PARTITION_TYPE := ext4
 BOARD_USERDATAIMAGE_FILE_SYSTEM_TYPE := ext4
 BOARD_VENDORIMAGE_FILE_SYSTEM_TYPE := ext4
 TARGET_COPY_OUT_VENDOR := vendor
-# Platform
-TARGET_BOARD_PLATFORM := msm8953
+# Platform：小猿 S2 实际 SoC = trinket（SM6125 / 骁龙 665），非 msm8953。
+# prebuilt/kernel 为原版多平台内核（含 trinket 与 msm8953 支持）。
+TARGET_BOARD_PLATFORM := trinket
 # Recovery
 TARGET_RECOVERY_PIXEL_FORMAT := rgba_8888
 TARGET_USERIMAGES_USE_EXT4 := true
@@ -92,10 +90,8 @@ TW_INPUT_BLACKLIST := "hbtp_vm"
 TW_USE_TOOLBOX := true
 TW_INCLUDE_REPACKTOOLS := true
 # ---- EPD 墨水屏显示（小猿 S2 / Onyx BOOX 平台）----
-# 内核为 msm8953 + mdss + EPD 驱动（epd_mode / epd_busy / update_waveform sysfs），
+# 内核为 trinket(SM6125) + mdss + EPD 驱动（epd_mode / epd_busy / update_waveform sysfs），
 # cmdline: video=vfb:640x400,bpp=32,memsize=3072000
-# TWRP minui 默认打开 /dev/graphics/fb0 绘制。若第一版黑屏，需对 minui 打 EPD 刷新补丁：
-#   1) 绘制完成后向 /sys/class/graphics/fb0/epd_mode 写刷新命令，或
-#   2) 在 minui 的 gr_flip() 中调用 fb ioctl 触发 EPD 更新（参考 Onyx BOOX 社区 TWRP patch）
+# TWRP minui 默认打开 /dev/graphics/fb0 绘制。
 # 分辨率 1404x1872（10.3" 227ppi），RGBX/RGBA 8888 帧缓冲。
 TARGET_RECOVERY_PIXEL_FORMAT := rgba_8888
