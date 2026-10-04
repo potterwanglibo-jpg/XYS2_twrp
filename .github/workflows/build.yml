@@ -1,12 +1,10 @@
-name: Build TWRP for XiaoYuan S2 (msm8953)
+name: Build TWRP for XiaoYuan S2 (trinket)
 on: workflow_dispatch
-
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
       - name: 安装依赖
         run: |
           sudo apt-get update
@@ -45,9 +43,13 @@ jobs:
           . build/envsetup.sh
           lunch omni_BOOX-eng
           mka recoveryimage -j$(nproc)
+      - name: 注入 recovery_dtbo（原版 recovery 的 qcom 设备树表，含 trinket 平台）
+        run: |
+          cd twrp
+          python3 ../inject_recovery_dtbo.py out/target/product/BOOX/recovery.img device/onyx/BOOX/prebuilt/recovery_dtbo.img
       - name: 上传产物
         uses: actions/upload-artifact@v4
         with:
           name: twrp-s2
-          # recovery-as-boot：产物为 boot.img（TWRP 作为 boot，9008 刷 boot_a/b 开机进 TWRP）
-          path: twrp/out/target/product/BOOX/boot.img
+          # 独立 recovery 分区方案：产物为 recovery.img
+          path: twrp/out/target/product/BOOX/recovery.img
