@@ -1,91 +1,50 @@
-name: Build OrangeFox for XiaoYuan S2 (trinket)
+name: Build TWRP for XiaoYuan S2 (msm8953)
 on: workflow_dispatch
+
+
 jobs:
   build:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
+
       - name: 安装依赖
         run: |
           sudo apt-get update
-          sudo apt-get install -y bc bison build-essential ccache curl flex g++-multilib gcc-multilib git gnupg gperf imagemagick liblz4-tool libncurses5-dev libsdl1.2-dev libssl-dev libxml2 libxml2-utils lzop pngcrush rsync schedtool squashfs-tools xsltproc zip zlib1g-dev python3 python-is-python3 aria2 patch
+          sudo apt-get install -y bc bison build-essential ccache curl flex g++-multilib gcc-multilib git gnupg gperf imagemagick liblz4-tool libncurses5-dev libsdl1.2-dev libssl-dev libxml2 libxml2-utils lzop pngcrush rsync schedtool squashfs-tools xsltproc zip zlib1g-dev python3 openjdk-8-jdk
           mkdir -p ~/bin
           curl https://storage.googleapis.com/git-repo-downloads/repo > ~/bin/repo
           chmod a+x ~/bin/repo
-      - name: 同步源码（OrangeFox fox_11.0 官方 sync 链）
+      - name: 同步 TWRP 源码（AOSP twrp-11 + 补 vendor/omni）
         run: |
-          # runner 无 SSH key，把 SSH 地址重写为 HTTPS
-          git config --global url."https://gitlab.com/".insteadOf "git@gitlab.com:"
-          git config --global url."https://gitlab.com/".insteadOf "ssh://git@gitlab.com:"
+          # runner 无 SSH key，把 manifest 里的 SSH 地址重写为 HTTPS
           git config --global url."https://github.com/".insteadOf "git@github.com:"
-          export GIT_TERMINAL_PROMPT=0
-          # repo 装在 ~/bin，必须加入 PATH，否则 orangefox_sync.sh 调用 repo 立即失败（command not found）
-          export PATH="$PATH:$HOME/bin"
-          echo "PATH=$PATH"
-          which repo && repo --version || echo "REPO_MISSING_IN_PATH"
-          # 社区验证过的 OrangeFox 官方 sync 脚本（GitHub 镜像，避免 GitLab 慢）
-          git clone https://github.com/momo54181/sync.git
-          cd sync
-          chmod 777 orangefox_sync.sh
-          # 脚本自动完成：repo init twrp-11 minimal + repo sync + patch build(make) + clone qcom common/twrp-common +
-          # mv bootable/recovery(移走TWRP) + clone OrangeFox bootable/Recovery(fox_11.0) + clone vendor/recovery
-          # 这样完全绕开 repo 不支持 local manifest 同 path 覆盖 / remove-project 报错的问题
-          ./orangefox_sync.sh --branch 11.0 --path $GITHUB_WORKSPACE/fox_11.0
-      - name: 修复 vendor/twrp（统一用 TeamWin android-11，确保 build/envsetup.sh + config/common.mk）
-        run: |
-          # AOSP envsetup.sh 末尾固定执行 `source vendor/twrp/build/envsetup.sh`，OrangeFox 设备树继承 vendor/twrp/config/common.mk。
-          # run#22 实证同步后 vendor/twrp 已存在（来源不明、疑似不完整），直接 clone 因目录非空失败；
-          # run#21 编译 0s exit 1 的根因 = sync 的 vendor/twrp 缺 build/envsetup.sh（source 失败）。
-          # 无条件删旧目录并用 TeamWin android-11（含 build/envsetup.sh + config/common.mk）重 clone。
-          echo "=== 旧 vendor/twrp ==="; ls $GITHUB_WORKSPACE/fox_11.0/vendor/twrp 2>&1 | head
-          echo "=== 旧 vendor/twrp/build ==="; ls $GITHUB_WORKSPACE/fox_11.0/vendor/twrp/build 2>&1 | head
-          rm -rf $GITHUB_WORKSPACE/fox_11.0/vendor/twrp
-          git clone --depth 1 -b android-11 https://github.com/TeamWin/android_vendor_twrp.git $GITHUB_WORKSPACE/fox_11.0/vendor/twrp
-          echo "=== 新 vendor/twrp/build ==="; ls $GITHUB_WORKSPACE/fox_11.0/vendor/twrp/build
-          echo "=== 新 vendor/twrp/config ==="; ls $GITHUB_WORKSPACE/fox_11.0/vendor/twrp/config
-          test -f $GITHUB_WORKSPACE/fox_11.0/vendor/twrp/build/envsetup.sh && echo VENDOR_TWRP_OK || { echo VENDOR_TWRP_MISSING; exit 1; }
+          git config --global url."https://github.com/".insteadOf "ssh://git@github.com/"
+          mkdir -p twrp
+          cd twrp
+          # OmniROM android-11 分支部分项目已失效（frameworks/base 等被删），
+          # 而 TWRP recovery 不需要完整 ROM 组件，故用 AOSP 的 TWRP minimal manifest
+          ~/bin/repo init -u https://github.com/minimal-manifest-twrp/platform_manifest_twrp_aosp.git -b twrp-11 --depth=1
+          ~/bin/repo sync -j$(nproc)
+          # omni_BOOX.mk 继承 vendor/omni/config/common.mk，手动拉 OmniROM 的 vendor/omni（android-11）
+          git clone -b android-11 --depth=1 https://github.com/omnirom/android_vendor_omni.git vendor/omni
+          # OmniROM 的 soong generator(omnirom/soong/generator) 与 TWRP 的(twrp/song/generator 冲突，
+          # recovery 不需要 OmniROM 的 soong 插件，删除 vendor/omni/build 禁用之
+          rm -rf vendor/omni/build
       - name: 放入 device tree
         run: |
-          mkdir -p $GITHUB_WORKSPACE/fox_11.0/device/onyx/BOOX
-          cp -r Android.bp Android.mk AndroidProducts.mk BoardConfig.mk README.md device.mk extract-files.sh omni_BOOX.mk twrp_BOOX.mk vendorsetup.sh recovery.fstab setup-makefiles.sh prebuilt $GITHUB_WORKSPACE/fox_11.0/device/onyx/BOOX/
-      - name: 调试检查（定位 envsetup.sh 崩溃点）
+          mkdir -p twrp/device/onyx/BOOX
+          cp -r Android.bp Android.mk AndroidProducts.mk BoardConfig.mk README.md device.mk extract-files.sh omni_BOOX.mk recovery.fstab setup-makefiles.sh vendorsetup.sh prebuilt twrp/device/onyx/BOOX/
+      - name: 编译 recovery
         run: |
-          cd $GITHUB_WORKSPACE/fox_11.0
-          echo "=== PWD ==="; pwd
-          echo "=== build/make/core/envsetup.mk ==="; ls -la build/make/core/envsetup.mk 2>&1 || echo "MISSING"
-          echo "=== vendor/twrp/build/envsetup.sh ==="; ls -la vendor/twrp/build/envsetup.sh 2>&1 || echo "MISSING"
-          echo "=== bootable/recovery/orangefox_defaults.go ==="; ls -la bootable/recovery/orangefox_defaults.go 2>&1 || echo "MISSING"
-          echo "=== bootable/recovery/orangefox.mk ==="; ls -la bootable/recovery/orangefox.mk 2>&1 || echo "MISSING"
-          echo "=== device/onyx/BOOX/ ==="; ls device/onyx/BOOX/ 2>&1
-          echo "=== 试 source envsetup（set +e 防退出）==="
-          set +e
-          bash -x build/envsetup.sh > /tmp/envsetup_trace.log 2>&1
-          echo "ENVSETUP_EXIT=$?"
-          echo "=== 最后 40 行跟踪 ==="
-          tail -40 /tmp/envsetup_trace.log
-          set -e
-      - name: 编译 OrangeFox
-        run: |
-          cd $GITHUB_WORKSPACE/fox_11.0
+          cd twrp
           export ALLOW_MISSING_DEPENDENCIES=true
-          export FOX_BUILD_DEVICE=BOOX
-          export FOX_AB_DEVICE=1
-          export OF_FORCE_PREBUILT_KERNEL=1
-          export FOX_VANILLA_BUILD=1
-          export OF_DEFAULT_KEYMASTER_VERSION=4.1
-          # 本次只出 recovery.img，跳过 update zip 缩短时间
-          export OF_DISABLE_UPDATEZIP=1
-          set +e
           . build/envsetup.sh
-          echo "ENVSETUP_EXIT=$?"
-          lunch twrp_BOOX-eng
-          echo "LUNCH_EXIT=$?"
-          set -e
+          lunch omni_BOOX-eng
           mka recoveryimage -j$(nproc)
       - name: 上传产物
         uses: actions/upload-artifact@v4
         with:
-          name: orangefox-s2
-          path: |
-            fox_11.0/out/target/product/BOOX/OrangeFox-*.img
-            fox_11.0/out/target/product/BOOX/recovery.img
+          name: twrp-s2
+          path: twrp/out/target/product/BOOX/recovery.img
