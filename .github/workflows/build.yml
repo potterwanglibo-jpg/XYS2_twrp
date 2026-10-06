@@ -85,16 +85,17 @@ jobs:
           esac
 
           # 写入清 misc init 脚本（on fs 阶段 bootdevice 符号链接已创建）
-          cat > init.recovery.clear-misc.rc << 'RCEOF'
-on fs
-    exec_start clear_misc
-
-service clear_misc /system/bin/dd if=/dev/zero of=/dev/block/bootdevice/by-name/misc bs=1024 count=1
-    user root
-    group root
-    oneshot
-    disabled
-RCEOF
+          printf '%s\n' \
+            'on fs' \
+            '    exec_start clear_misc' \
+            '' \
+            'service clear_misc /system/bin/dd if=/dev/zero of=/dev/block/bootdevice/by-name/misc bs=1024 count=1' \
+            '    user root' \
+            '    group root' \
+            '    oneshot' \
+            '    disabled' > init.recovery.clear-misc.rc
+          echo "=== clear-misc rc ==="
+          cat init.recovery.clear-misc.rc
 
           # 重新打包 ramdisk（gzip 压缩 cpio）
           find . | cpio -o -H newc 2>/dev/null | gzip -9 > ../ramdisk_new.cpio.gz
